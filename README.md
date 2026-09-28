@@ -12,15 +12,6 @@ The demo computes exact zero-temperature ground states of the random-field Ising
 
 *Created by Claude Opus 5.5 (Anthropic).*
 
-## Running it
-
-The demo is a single self-contained file, `index.html`, with no build step and no dependencies. You can run it in two ways:
-
-- **Locally:** open `index.html` in any modern browser.
-- **GitHub Pages:** push this folder to a repository and enable Pages from the repository settings. `index.html` is served at the site root.
-
-All computation runs in the browser. The only external request is to Google Fonts, and the page falls back to system fonts if that request fails.
-
 ## The model
 
 The Hamiltonian is
