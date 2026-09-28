@@ -1,0 +1,741 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Random-field Ising model on scale-free networks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;1,7..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E8ECF1; --panel:#F7F9FB; --ink:#15202B; --muted:#5A6573; --rule:#C9D1DB; --grid:#DEE4EB;
+  --on:#FFFFFF; --up:#CF8710; --down:#2A55A0; --wall:#C22E4A; --focus:#2A55A0;
+  --s0:#A9C0E4; --s1:#7C9DD3; --s2:#4F77BD; --s3:#2A55A0; --s4:#14336D;
+  --serif:"Literata",Georgia,"Times New Roman",serif;
+  --sans:"Figtree",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#11161D; --panel:#18202A; --ink:#E4E9F0; --muted:#98A4B4; --rule:#2E3947; --grid:#222B36;
+    --on:#0E141C; --up:#F0AE3C; --down:#6F9CE8; --wall:#F06880; --focus:#8DB3F4;
+    --s0:#3A5788; --s1:#5579B6; --s2:#7C9DDA; --s3:#A7C0EE; --s4:#D6E3FA;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11161D; --panel:#18202A; --ink:#E4E9F0; --muted:#98A4B4; --rule:#2E3947; --grid:#222B36;
+  --on:#0E141C; --up:#F0AE3C; --down:#6F9CE8; --wall:#F06880; --focus:#8DB3F4;
+  --s0:#3A5788; --s1:#5579B6; --s2:#7C9DDA; --s3:#A7C0EE; --s4:#D6E3FA;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1240px;margin:0 auto;padding:0 20px}
+a{color:var(--down)}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+header.mast{padding:36px 0 18px}
+.cite{font-size:13px;color:var(--muted);margin:0 0 10px}
+h1{font-family:var(--serif);font-weight:500;font-size:clamp(28px,4vw,44px);line-height:1.08;letter-spacing:-0.01em;margin:0 0 14px;max-width:24ch}
+.lede{font-family:var(--serif);font-size:17px;line-height:1.62;max-width:68ch;margin:0;color:var(--ink)}
+.lede var,.prose var{font-style:italic}
+
+/* shared control bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--rule);margin-top:18px}
+.bar .wrap{display:flex;flex-wrap:wrap;gap:14px 28px;align-items:center;padding-top:12px;padding-bottom:12px}
+.ctl{display:flex;flex-direction:column;gap:3px;min-width:0}
+.ctl label,.ctl .lab{font-size:13px;color:var(--muted);display:flex;justify-content:space-between;gap:10px}
+.ctl .lab{display:block}
+.ctl output{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--down);margin:2px 0}
+.ctl.g{flex:1 1 260px}
+.ctl.kb{flex:0 1 150px}
+.regime{font-size:13px;color:var(--ink);margin-top:1px}
+.seg{display:inline-flex;align-self:flex-start;border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--panel)}
+.seg button{font:inherit;font-size:13px;border:0;background:transparent;color:var(--ink);padding:6px 10px;cursor:pointer;display:flex;align-items:center;gap:6px}
+.seg button+button{border-left:1px solid var(--rule)}
+.seg button[aria-pressed=true]{background:var(--down);color:var(--on)}
+.seg canvas{width:34px;height:18px;display:block}
+button.act{font:inherit;font-size:14px;font-weight:600;border:1px solid var(--down);background:var(--down);color:var(--on);border-radius:8px;padding:7px 14px;cursor:pointer}
+button.act.ghost{background:transparent;color:var(--down)}
+button.act:disabled{opacity:.5;cursor:default}
+
+/* hero */
+.hero{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;margin:22px 0 10px}
+.netwrap{position:relative;background:var(--panel);border:1px solid var(--rule);border-radius:14px;min-height:520px;overflow:hidden}
+#net{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.legend{position:absolute;left:14px;bottom:12px;display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--muted);pointer-events:none}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.legend b{display:inline-block;width:16px;height:2px;margin-right:5px;vertical-align:3px;background:var(--wall)}
+#tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12.5px;padding:6px 9px;border-radius:6px;line-height:1.4;display:none;white-space:nowrap;font-variant-numeric:tabular-nums}
+.netinfo{position:absolute;right:14px;top:12px;font-size:12.5px;color:var(--muted);text-align:right;pointer-events:none}
+.side{display:flex;flex-direction:column;gap:16px}
+.deltabox{background:var(--panel);border:1px solid var(--rule);border-radius:14px;padding:16px 16px 14px}
+.deltabox .big{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.deltabox .big span{font-family:var(--serif);font-size:15px;color:var(--muted)}
+.deltabox .big output{font-family:var(--serif);font-size:34px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1}
+.row{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.readout{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:14px;margin:12px 0 0;padding:12px 0 0;border-top:1px solid var(--rule)}
+.readout dt{color:var(--muted)} .readout dd{margin:0;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.readout .m dd{font-size:20px}
+.opts{font-size:13.5px;display:flex;flex-direction:column;gap:6px}
+.opts label{display:flex;gap:8px;align-items:center;cursor:pointer}
+.opts input{accent-color:var(--down)}
+.small{font-size:13px;color:var(--muted);margin:0}
+
+/* sections */
+section.part{margin:46px 0 0;padding-top:26px;border-top:1px solid var(--rule)}
+h2{font-family:var(--serif);font-weight:500;font-size:28px;line-height:1.15;margin:0 0 8px}
+h3{font-family:var(--sans);font-size:15px;font-weight:600;margin:0 0 2px}
+.prose{font-family:var(--serif);font-size:16px;line-height:1.65;max-width:70ch;margin:0 0 18px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.card{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:14px 14px 10px;min-width:0}
+.card .cap{font-size:13px;color:var(--muted);margin:2px 0 8px;min-height:1.5em}
+canvas.plot{width:100%;height:250px;display:block}
+canvas.plot.tall{height:300px}
+.verdict{font-family:var(--serif);font-size:16px;line-height:1.55;margin:4px 0 10px}
+.verdict strong{font-family:var(--sans);font-weight:600}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:13.5px;margin:0 0 10px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-variant-numeric:tabular-nums;font-weight:600}
+.simctl{display:flex;flex-wrap:wrap;gap:14px 24px;align-items:flex-end;margin:0 0 18px;background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:14px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips label{font-size:13px;border:1px solid var(--rule);border-radius:999px;padding:3px 10px;cursor:pointer;display:flex;gap:5px;align-items:center;font-variant-numeric:tabular-nums}
+.chips input{accent-color:var(--down);margin:0}
+.num{font:inherit;font-size:14px;width:76px;padding:5px 7px;border:1px solid var(--rule);border-radius:6px;background:var(--bg);color:var(--ink);font-variant-numeric:tabular-nums}
+.prog{flex:1 1 200px;min-width:160px}
+.prog .track{height:6px;background:var(--grid);border-radius:3px;overflow:hidden}
+.prog .fill{height:100%;width:0;background:var(--down);transition:width .15s}
+.prog .txt{font-size:13px;color:var(--muted);margin-top:4px;font-variant-numeric:tabular-nums}
+.inline{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.inline select{font:inherit;font-size:13px;background:var(--bg);color:var(--ink);border:1px solid var(--rule);border-radius:6px;padding:3px 6px}
+.sliders3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:6px}
+footer ol{margin:10px 0 0;padding-left:20px}footer li{margin:4px 0}footer .credit{margin-top:14px}
+footer{margin:56px 0 40px;padding-top:18px;border-top:1px solid var(--rule);font-size:13px;color:var(--muted);max-width:80ch}
+@media (max-width:980px){.hero{grid-template-columns:1fr}.netwrap{min-height:420px}.grid3{grid-template-columns:1fr 1fr}}
+@media (max-width:680px){.grid3,.grid2{grid-template-columns:1fr}.netwrap{min-height:360px}.bar{position:static}h2{font-size:24px}}
+@media (prefers-reduced-motion:reduce){.prog .fill{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="mast">
+  <p class="cite">Interactive companion to S. H. Lee, H. Jeong &amp; J. D. Noh, <a href="https://doi.org/10.1103/PhysRevE.74.031118">Phys. Rev. E 74, 031118 (2006)</a></p>
+  <h1>The random-field Ising model on scale-free networks</h1>
+  <p class="lede">Every node carries a spin <var>s<sub>i</sub></var> = ±1. Links pull neighbours into line (<var>J</var> = 1); a quenched field <var>h<sub>i</sub></var> drawn from <var>p</var>(<var>h</var>) = <var>p</var><sub>0</sub>(<var>h</var>/Δ)/Δ pulls each spin its own way. Below, the exact zero-temperature ground state of <var>H</var> = −Σ<var>s<sub>i</sub>s<sub>j</sub></var> − Σ<var>h<sub>i</sub>s<sub>i</sub></var> is recomputed with a min-cut / max-flow solver (Dinic’s algorithm) whenever you move a control.</p>
+</header>
+</div>
+
+<div class="bar" role="region" aria-label="Model parameters">
+  <div class="wrap">
+    <div class="ctl g">
+      <label for="gam"><span>Degree exponent γ, <var>P</var>(<var>k</var>) ∼ <var>k</var><sup>−γ</sup></span><output id="gamOut">4.0</output></label>
+      <input id="gam" type="range" min="2.1" max="7" step="0.1" value="4">
+      <div class="regime" id="regime"></div>
+    </div>
+    <div class="ctl">
+      <span class="lab">Random-field shape <var>p</var><sub>0</sub>(<var>x</var>)</span>
+      <div class="seg" id="distSeg" role="group" aria-label="Random field distribution"></div>
+      <div class="regime" id="distNote"></div>
+    </div>
+    <div class="ctl kb">
+      <label for="kb"><span>Mean degree k̄</span><output id="kbOut">10</output></label>
+      <input id="kb" type="range" min="2" max="20" step="1" value="10">
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+<section class="hero" aria-label="Ground state on one network">
+  <div class="netwrap">
+    <canvas id="net" aria-label="Network ground state: node colour shows spin direction, node size shows degree"></canvas>
+    <div class="netinfo" id="netInfo"></div>
+    <div class="legend"><span><i style="background:var(--up)"></i>spin up</span><span><i style="background:var(--down)"></i>spin down</span><span id="legWall"><b></b>broken bond</span><span id="legRing"><i style="background:transparent;box-shadow:0 0 0 1.5px var(--ink) inset"></i>spin against its own field</span></div>
+    <div id="tip"></div>
+  </div>
+  <aside class="side">
+    <div class="deltabox">
+      <div class="big"><span>Disorder strength Δ</span><output id="dOut">0</output></div>
+      <input id="dSl" type="range" min="0" max="100" step="0.01" value="30" aria-label="Disorder strength Delta">
+      <div class="row">
+        <button class="act" id="play">Sweep Δ</button>
+        <button class="act ghost" id="resample">New network</button>
+      </div>
+      <dl class="readout">
+        <div class="m" style="display:contents"><dt>Order parameter <var>m</var></dt><dd id="rM">–</dd></div>
+        <dt>Energy per node</dt><dd id="rE">–</dd>
+        <dt>Spins up</dt><dd id="rUp">–</dd>
+        <dt>Broken bonds</dt><dd id="rW">–</dd>
+        <dt>Spins against their field</dt><dd id="rA">–</dd>
+        <dt>Max-flow solve time</dt><dd id="rT">–</dd>
+      </dl>
+      <p class="small" style="margin-top:8px"><var>m</var> = |Σ<var>k<sub>i</sub>s<sub>i</sub></var>| / Σ<var>k<sub>i</sub></var>, the degree-weighted magnetization used in the paper.</p>
+    </div>
+    <div class="deltabox">
+      <h3>This network, swept in Δ</h3>
+      <p class="small">Ground state of one sample (solid) with the continuum mean-field solution (dashed) for the same γ and k̄.</p>
+      <canvas class="plot" id="curve" style="height:180px"></canvas>
+    </div>
+    <div class="deltabox opts">
+      <label for="nN" class="ctl" style="display:block"><span style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted)"><span>Nodes shown <var>N</var></span><output id="nOut" style="color:var(--ink);font-weight:600">300</output></span>
+        <input id="nN" type="range" min="100" max="800" step="50" value="300"></label>
+      <label><input type="radio" name="view" value="spin" checked> Colour by ground-state spin</label>
+      <label><input type="radio" name="view" value="field"> Colour by local field <var>h<sub>i</sub></var></label>
+      <label><input type="checkbox" id="walls" checked> Mark broken bonds</label>
+      <label><input type="checkbox" id="rings" checked> Ring spins that oppose their field</label>
+    </div>
+  </aside>
+</section>
+
+<section class="part" id="mf">
+  <h2>Mean-field theory</h2>
+  <p class="prose">Assuming uncorrelated degrees and <var>m<sub>i</sub></var> = <var>m</var>(<var>k<sub>i</sub></var>, <var>h<sub>i</sub></var>), the zero-temperature order parameter solves <var>m</var> = <var>f</var>(<var>m</var>) = ∫d<var>k</var> [<var>kP</var>(<var>k</var>)/k̄] <var>G</var>(<var>km</var>/Δ), with <var>G</var>(<var>x</var>) = 2∫<sub>0</sub><sup><var>x</var></sup><var>p</var><sub>0</sub>. The shape of <var>f</var> near <var>m</var> = 0 decides everything (paper Fig. 1): an infinite slope means order at every Δ, convexity gives a jump, concavity a continuous transition. Curves here use the continuum <var>P</var>(<var>k</var>) = <var>ck</var><sup>−γ</sup> for <var>k</var> ≥ <var>k</var><sub>0</sub>, with <var>k</var><sub>0</sub> set by k̄.</p>
+  <div class="grid3">
+    <div class="card">
+      <h3>Self-consistency map</h3>
+      <p class="cap" id="fmCap"></p>
+      <canvas class="plot" id="fmPlot"></canvas>
+      <div class="ctl" style="margin-top:8px">
+        <label for="mfD"><span>Δ for this panel</span><output id="mfDOut"></output></label>
+        <input id="mfD" type="range" min="0" max="100" step="0.01" value="50">
+      </div>
+      <div class="opts" style="margin-top:4px"><label><input type="checkbox" id="zoom"> Zoom near <var>m</var> = 0</label></div>
+    </div>
+    <div class="card">
+      <h3>Mean-field order parameter</h3>
+      <p class="cap" id="mdCap"></p>
+      <canvas class="plot" id="mdPlot"></canvas>
+      <div class="opts" style="margin-top:8px"><label><input type="checkbox" id="mfLog"> Log–log axes</label></div>
+    </div>
+    <div class="card">
+      <h3>What the theory predicts here</h3>
+      <p class="verdict" id="verdict"></p>
+      <dl class="kv" id="kv"></dl>
+      <canvas class="plot" id="betaPlot" style="height:150px"></canvas>
+      <p class="small">β(γ) from mean field (line) and the paper’s finite-size-scaling estimates (dots, Fig. 7).</p>
+    </div>
+  </div>
+</section>
+
+<section class="part" id="sim">
+  <h2>Finite-size simulation</h2>
+  <p class="prose">This reproduces the paper’s numerical test on static-model networks (Figs. 2–6): for each size, many independent networks and field realizations are solved exactly across a grid of Δ. The same realization is reused along Δ, as in a sweep. Larger sizes and more samples sharpen the picture but take longer; everything runs in your browser.</p>
+  <div class="simctl">
+    <div class="ctl"><span class="lab">Network sizes <var>N</var></span><div class="chips" id="sizes"></div></div>
+    <div class="ctl"><label for="nSamp"><span>Samples per size</span></label><input class="num" id="nSamp" type="number" min="4" max="400" value="48"></div>
+    <div class="ctl"><label for="nPts"><span>Δ points</span></label><input class="num" id="nPts" type="number" min="8" max="80" value="28"></div>
+    <div class="ctl"><label for="dLo"><span>Δ from</span></label><input class="num" id="dLo" type="number" step="0.1"></div>
+    <div class="ctl"><label for="dHi"><span>Δ to</span></label><input class="num" id="dHi" type="number" step="0.1"></div>
+    <button class="act ghost" id="autoR">Suggest range</button>
+    <button class="act" id="run">Run sweep</button>
+    <div class="prog"><div class="track"><div class="fill" id="pFill"></div></div><div class="txt" id="pTxt">Not run yet</div></div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h3>Order parameter ⟨<var>m</var>⟩ versus Δ</h3>
+      <p class="cap" id="mCap">Paper Figs. 2 and 4.</p>
+      <canvas class="plot tall" id="mPlot"></canvas>
+      <div class="opts" style="margin-top:6px"><label><input type="checkbox" id="simLog"> Log–log axes</label></div>
+    </div>
+    <div class="card">
+      <h3>Binder parameter <var>U</var> = 1 − ⟨<var>m</var><sup>4</sup>⟩ / 3⟨<var>m</var><sup>2</sup>⟩<sup>2</sup></h3>
+      <p class="cap" id="uCap">Paper Fig. 5. Curves for different <var>N</var> cross at a continuous transition.</p>
+      <canvas class="plot tall" id="uPlot"></canvas>
+    </div>
+    <div class="card">
+      <h3>Histogram <var>H</var>(<var>m</var>) near the threshold</h3>
+      <p class="cap">Paper Fig. 3. Two peaks at the same Δ signal phase coexistence and a first-order jump.</p>
+      <canvas class="plot tall" id="hPlot"></canvas>
+      <div class="inline" style="margin-top:6px">
+        <label>Size <select id="hN"></select></label>
+        <label style="flex:1;display:flex;gap:8px;align-items:center">Centre Δ <input id="hD" type="range" min="0" max="10" step="1" value="5" style="flex:1"></label>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Finite-size scaling collapse</h3>
+      <p class="cap" id="cCap">Paper Fig. 6: ⟨<var>m</var>⟩<var>N</var><sup>β/ν′</sup> versus |Δ<sub>c</sub> − Δ|<sup>ν′</sup><var>N</var>, using points with Δ &lt; Δ<sub>c</sub>.</p>
+      <canvas class="plot tall" id="cPlot" style="height:246px"></canvas>
+      <div class="sliders3">
+        <div class="ctl"><label for="cDc"><span>Δ<sub>c</sub></span><output id="cDcO"></output></label><input id="cDc" type="range" step="0.01"></div>
+        <div class="ctl"><label for="cB"><span>β</span><output id="cBO"></output></label><input id="cB" type="range" min="0.1" max="2" step="0.01" value="1"></div>
+        <div class="ctl"><label for="cNu"><span>ν′</span><output id="cNuO"></output></label><input id="cNu" type="range" min="0.5" max="6" step="0.01" value="3"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Networks come from the static model of Goh, Kahng &amp; Kim [2]: node <var>i</var> gets weight <var>i</var><sup>−1/(γ−1)</sup> and <var>N</var>k̄/2 links are placed between weight-sampled pairs, with self-loops and duplicates rejected. The ground state maps onto a minimum cut: a source edge of capacity 2<var>h<sub>i</sub></var> for each positive field, a sink edge of capacity 2|<var>h<sub>i</sub></var>| for each negative one, and capacity 2 each way along every link; spins still reachable from the source after max-flow point up. The random-field shapes are the paper’s <var>p</var><sub>+</sub> and <var>p</var><sub>−</sub>, plus its example with <var>a</var> = 3/4, all supported on −1 ≤ <var>x</var> ≤ 1. The paper does not quote its mean degree; k̄ around 16 puts the thresholds close to those in its Figs. 2–5, while smaller k̄ keeps the network picture legible. Networks here are far smaller than the paper’s 64 000 nodes, so transitions look rounder and critical exponents drift; add the larger sizes to watch them sharpen.
+  <ol>
+    <li>S. H. Lee, H. Jeong, and J. D. Noh, “Random field Ising model on networks with inhomogeneous connections,” <a href="https://doi.org/10.1103/PhysRevE.74.031118">Phys. Rev. E 74, 031118 (2006)</a>.</li>
+    <li>K.-I. Goh, B. Kahng, and D. Kim, “Universal behavior of load distribution in scale-free networks,” <a href="https://doi.org/10.1103/PhysRevLett.87.278701">Phys. Rev. Lett. 87, 278701 (2001)</a>.</li>
+  </ol>
+  <p class="credit">Created by Claude Opus 5.5 (Anthropic).</p>
+</footer>
+</main>
+<script>
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function hashSeed(){let h=2166136261>>>0;for(const v of arguments){h^=(v|0);h=Math.imul(h,16777619);h^=h>>>13;}return h>>>0;}
+
+const DISTS={
+  plus:{name:'p₊',formula:'p₊(x) = (3/2)x²',note:'Valley at h = 0, weight at ±Δ',
+    p0:x=>Math.abs(x)<=1?1.5*x*x:0, G:x=>x>=1?1:x*x*x, inv:u=>Math.cbrt(2*u-1), p00:0, pdd:3},
+  minus:{name:'p₋',formula:'p₋(x) = (π/4)cos(πx/2)',note:'Single peak at h = 0',
+    p0:x=>Math.abs(x)<=1?Math.PI/4*Math.cos(Math.PI*x/2):0, G:x=>x>=1?1:Math.sin(Math.PI*x/2),
+    inv:u=>2/Math.PI*Math.asin(Math.max(-1,Math.min(1,2*u-1))), p00:Math.PI/4, pdd:-Math.pow(Math.PI,3)/16},
+  mixed:{name:'p₃/₄',formula:'p(x) = 0.45 + 0.15x²',note:'Convex at 0, yet D < 0 at γ = 4',
+    p0:x=>Math.abs(x)<=1?0.45+0.15*x*x:0, G:x=>x>=1?1:0.9*x+0.1*x*x*x,
+    inv:u=>{let x=2*u-1;for(let k=0;k<40;k++){const f=0.5+0.45*x+0.05*x*x*x-u;x-=f/(0.45+0.15*x*x);x=Math.max(-1,Math.min(1,x));}return x;},
+    p00:0.45, pdd:0.3}
+};
+
+function staticModel(N,g,kbar,rng){
+  const a=1/(g-1),cdf=new Float64Array(N);let s=0;
+  for(let i=0;i<N;i++){s+=Math.pow(i+1,-a);cdf[i]=s;}
+  for(let i=0;i<N;i++)cdf[i]/=s;
+  const pick=()=>{const u=rng();let lo=0,hi=N-1;while(lo<hi){const m=(lo+hi)>>1;if(cdf[m]<u)lo=m+1;else hi=m;}return lo;};
+  const L=Math.round(kbar*N/2),seen=new Set(),ei=[],ej=[];let tries=0;
+  while(ei.length<L&&tries<L*80){tries++;const i=pick(),j=pick();if(i===j)continue;
+    const key=i<j?i*N+j:j*N+i;if(seen.has(key))continue;seen.add(key);ei.push(i);ej.push(j);}
+  const deg=new Int32Array(N);for(let l=0;l<ei.length;l++){deg[ei[l]]++;deg[ej[l]]++;}
+  let k1=0,k2=0;for(let i=0;i<N;i++){k1+=deg[i];k2+=deg[i]*deg[i];}
+  return {N,L:ei.length,ei:Int32Array.from(ei),ej:Int32Array.from(ej),deg,sumk:k1,kappa:k1>0?k2/k1:0};
+}
+
+// Exact ground state of H = -sum_<ij> s_i s_j - sum_i h_i s_i via min-cut (Dinic).
+function makeSolver(net){
+  const N=net.N,L=net.L,n=N+2,S=N,T=N+1,M=4*N+2*L,EPS=1e-9;
+  const head=new Int32Array(n).fill(-1),to=new Int32Array(M),nx=new Int32Array(M),cap=new Float64Array(M);
+  let e=0;
+  const add=(u,v,c,rc)=>{to[e]=v;cap[e]=c;nx[e]=head[u];head[u]=e;e++;to[e]=u;cap[e]=rc;nx[e]=head[v];head[v]=e;e++;return e-2;};
+  const eS=new Int32Array(N),eT=new Int32Array(N);
+  for(let l=0;l<L;l++)add(net.ei[l],net.ej[l],2,2);   // broken bond costs 2J
+  for(let i=0;i<N;i++){eS[i]=add(S,i,0,0);eT[i]=add(i,T,0,0);}
+  const cap0=cap.slice(),level=new Int32Array(n),it=new Int32Array(n),q=new Int32Array(n);
+  const spins=new Int8Array(N);
+  function bfs(){level.fill(-1);let qh=0,qt=0;q[qt++]=S;level[S]=0;
+    while(qh<qt){const u=q[qh++];for(let a=head[u];a!==-1;a=nx[a]){const v=to[a];if(level[v]<0&&cap[a]>EPS){level[v]=level[u]+1;q[qt++]=v;}}}
+    return level[T]>=0;}
+  function dfs(u,f){if(u===T)return f;let pushed=0;
+    for(;it[u]!==-1;it[u]=nx[it[u]]){const a=it[u],v=to[a];
+      if(cap[a]>EPS&&level[v]===level[u]+1){const d=dfs(v,Math.min(f-pushed,cap[a]));
+        if(d>0){cap[a]-=d;cap[a^1]+=d;pushed+=d;if(f-pushed<=EPS)return pushed;}}}
+    level[u]=-1;return pushed;}
+  function solve(h){
+    cap.set(cap0);
+    for(let i=0;i<N;i++){const hi=h[i];if(hi>0)cap[eS[i]]=2*hi;else if(hi<0)cap[eT[i]]=-2*hi;}
+    let flow=0;
+    while(bfs()){it.set(head);let f;while((f=dfs(S,Infinity))>EPS)flow+=f;}
+    bfs(); // residual reachability from source = up spins
+    for(let i=0;i<N;i++)spins[i]=level[i]>=0?1:-1;
+    return flow;
+  }
+  return {solve,spins};
+}
+function magnetization(net,s){let a=0;for(let i=0;i<net.N;i++)a+=net.deg[i]*s[i];return net.sumk>0?Math.abs(a)/net.sumk:0;}
+function energy(net,s,h){let E=0;for(let l=0;l<net.L;l++)E-=s[net.ei[l]]*s[net.ej[l]];for(let i=0;i<net.N;i++)E-=h[i]*s[i];return E;}
+
+// Mean-field (continuum, uncorrelated, P(k)=c k^-g, k>=k0)
+function fMF(m,D,g,k0,G){
+  if(m<=0)return 0;if(D<=0)return 1;
+  const K=Math.max(k0,D/m),pref=(g-2)*Math.pow(k0,g-2);let I=0;
+  if(K>k0){const a=Math.log(k0),b=Math.log(K),n=96,hh=(b-a)/n;
+    for(let j=0;j<=n;j++){const u=a+j*hh,k=Math.exp(u),w=(j===0||j===n)?1:(j%2?4:2);I+=w*Math.pow(k,2-g)*G(k*m/D);}I*=hh/3;}
+  return pref*(I+Math.pow(K,2-g)/(g-2));
+}
+function mfSolve(D,g,k0,G){
+  const n=140;let prev=1,hp=fMF(1,D,g,k0,G)-1;
+  if(hp>=0)return 1;
+  for(let j=1;j<=n;j++){const m=Math.pow(10,-9*j/n),hv=fMF(m,D,g,k0,G)-m;
+    if(hv>0){let lo=m,hi=prev;for(let t=0;t<40;t++){const mid=0.5*(lo+hi);if(fMF(mid,D,g,k0,G)-mid>0)lo=mid;else hi=mid;}return 0.5*(lo+hi);}
+    prev=m;}
+  return 0;
+}
+function Dconst(g,d){const b1=2*d.p00,b3=d.pdd/3,a=5-g,n=3000;let s=0;
+  for(let i=0;i<n;i++){const t=(i+0.5)/n,x=Math.pow(t,1/a);s+=x<1e-3?b3:(d.G(x)-b1*x)/(x*x*x);}
+  return s/(n*a)+1/(g-2)-b1/(g-3);}
+
+// ---------- utilities ----------
+const $=id=>document.getElementById(id);
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FONT='11.5px Figtree, system-ui, -apple-system, sans-serif';
+function fmtD(v){const a=Math.abs(v);return a>=100?v.toFixed(0):a>=10?v.toFixed(1):v.toFixed(2);}
+function setup(cv){const dpr=Math.min(window.devicePixelRatio||1,2),w=cv.clientWidth,h=cv.clientHeight;if(!w||!h)return null;
+  const W=Math.round(w*dpr),H=Math.round(h*dpr);if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H;}
+  const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);return {ctx,w,h};}
+function niceStep(r,n){const raw=r/n,p=Math.pow(10,Math.floor(Math.log10(raw))),f=raw/p;return (f<1.5?1:f<3?2:f<7?5:10)*p;}
+function linTicks(a,b,n){const s=niceStep((b-a)||1,n),t=[];for(let v=Math.ceil(a/s-1e-9)*s;v<=b+1e-9*Math.abs(s);v+=s)t.push(+v.toFixed(10));return t;}
+function logTicks(a,b){const lo=Math.floor(Math.log10(a)),hi=Math.ceil(Math.log10(b)),t=[],few=hi-lo<=2;
+  for(let e=lo;e<=hi;e++)for(const m of few?[1,2,5]:[1]){const v=m*Math.pow(10,e);if(v>=a*0.999&&v<=b*1.001)t.push(v);}return t;}
+function tickLabel(v){if(v===0)return '0';const a=Math.abs(v);if(a>=1e4||a<1e-3){const e=Math.round(Math.log10(a));return Math.abs(a/Math.pow(10,e)-1)<1e-6?'10^'+e:v.toExponential(0);}return String(+v.toPrecision(3));}
+function sup(s){const m={'-':'⁻','0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};return s.replace(/10\^(-?\d+)/,(x,e)=>'10'+[...e].map(c=>m[c]).join(''));}
+
+function plot(cv,cfg){
+  const S=setup(cv);if(!S)return null;const {ctx,w,h}=S;
+  const ink=css('--ink'),muted=css('--muted'),grid=css('--grid'),rule=css('--rule'),panel=css('--panel');
+  const m={l:cfg.ml??46,r:12,t:10,b:34},pw=w-m.l-m.r,ph=h-m.t-m.b;
+  const [x0,x1]=cfg.xlim,[y0,y1]=cfg.ylim,lx=!!cfg.xlog,ly=!!cfg.ylog;
+  const tx=v=>lx?Math.log10(v):v,ty=v=>ly?Math.log10(v):v;
+  const X=v=>m.l+(tx(v)-tx(x0))/(tx(x1)-tx(x0))*pw,Y=v=>m.t+ph-(ty(v)-ty(y0))/(ty(y1)-ty(y0))*ph;
+  ctx.font=FONT;
+  const xt=lx?logTicks(x0,x1):linTicks(x0,x1,Math.max(3,Math.floor(pw/70)));
+  const yt=ly?logTicks(y0,y1):linTicks(y0,y1,Math.max(3,Math.floor(ph/42)));
+  ctx.strokeStyle=grid;ctx.lineWidth=1;ctx.beginPath();
+  for(const v of xt){const px=Math.round(X(v))+.5;ctx.moveTo(px,m.t);ctx.lineTo(px,m.t+ph);}
+  for(const v of yt){const py=Math.round(Y(v))+.5;ctx.moveTo(m.l,py);ctx.lineTo(m.l+pw,py);}
+  ctx.stroke();
+  ctx.fillStyle=muted;ctx.textAlign='center';ctx.textBaseline='top';
+  for(const v of xt)ctx.fillText(sup(tickLabel(v)),X(v),m.t+ph+5);
+  ctx.textAlign='right';ctx.textBaseline='middle';
+  for(const v of yt)ctx.fillText(sup(tickLabel(v)),m.l-6,Y(v));
+  ctx.strokeStyle=rule;ctx.strokeRect(m.l+.5,m.t+.5,pw-1,ph-1);
+  ctx.fillStyle=muted;ctx.textAlign='center';ctx.textBaseline='bottom';
+  if(cfg.xlabel)ctx.fillText(cfg.xlabel,m.l+pw/2,h-1);
+  if(cfg.ylabel){ctx.save();ctx.translate(11,m.t+ph/2);ctx.rotate(-Math.PI/2);ctx.textBaseline='middle';ctx.fillText(cfg.ylabel,0,0);ctx.restore();}
+  ctx.save();ctx.beginPath();ctx.rect(m.l,m.t,pw,ph);ctx.clip();
+  for(const b of cfg.bars||[]){ctx.fillStyle=b.color;const yA=Y(ly?y0:0),yB=Y(b.y);ctx.fillRect(X(b.x0),yB,X(b.x1)-X(b.x0),yA-yB);}
+  for(const v of cfg.vlines||[]){ctx.strokeStyle=v.color||muted;ctx.lineWidth=v.width||1;ctx.setLineDash(v.dash||[4,4]);ctx.beginPath();ctx.moveTo(X(v.x),m.t);ctx.lineTo(X(v.x),m.t+ph);ctx.stroke();}
+  for(const v of cfg.hlines||[]){ctx.strokeStyle=v.color||muted;ctx.lineWidth=v.width||1;ctx.setLineDash(v.dash||[4,4]);ctx.beginPath();ctx.moveTo(m.l,Y(v.y));ctx.lineTo(m.l+pw,Y(v.y));ctx.stroke();}
+  ctx.setLineDash([]);
+  for(const s of cfg.series||[]){
+    const ok=(x,y)=>isFinite(x)&&isFinite(y)&&(!lx||x>0)&&(!ly||y>0);
+    if(s.width!==0){ctx.strokeStyle=s.color;ctx.lineWidth=s.width||1.6;ctx.setLineDash(s.dash||[]);ctx.lineJoin='round';ctx.beginPath();let pen=false;
+      for(let i=0;i<s.x.length;i++){if(!ok(s.x[i],s.y[i])){pen=false;continue;}const px=X(s.x[i]),py=Y(s.y[i]);
+        if(pen&&s.breakAt&&s.breakAt(i)){ctx.moveTo(px,py);}else if(pen)ctx.lineTo(px,py);else ctx.moveTo(px,py);pen=true;}
+      ctx.stroke();ctx.setLineDash([]);}
+    if(s.marker){ctx.fillStyle=s.color;for(let i=0;i<s.x.length;i++){if(!ok(s.x[i],s.y[i]))continue;ctx.beginPath();ctx.arc(X(s.x[i]),Y(s.y[i]),s.marker,0,7);ctx.fill();}}
+  }
+  for(const d of cfg.dots||[]){ctx.beginPath();ctx.arc(X(d.x),Y(d.y),d.r||4,0,7);if(d.hollow){ctx.fillStyle=panel;ctx.fill();ctx.strokeStyle=d.color;ctx.lineWidth=1.6;ctx.stroke();}else{ctx.fillStyle=d.color;ctx.fill();ctx.strokeStyle=panel;ctx.lineWidth=1.5;ctx.stroke();}}
+  ctx.restore();
+  if(cfg.legend&&cfg.legend.length){ctx.font=FONT;const lh=16,wmax=Math.max(...cfg.legend.map(l=>ctx.measureText(l.label).width))+30;
+    const bx=cfg.legendPos==='tl'||cfg.legendPos==='bl'?m.l+8:m.l+pw-wmax-8,by=cfg.legendPos==='bl'||cfg.legendPos==='br'?m.t+ph-8-cfg.legend.length*lh-4:m.t+8;
+    ctx.fillStyle=panel;ctx.globalAlpha=.88;ctx.fillRect(bx-4,by-2,wmax+6,cfg.legend.length*lh+6);ctx.globalAlpha=1;
+    cfg.legend.forEach((l,i)=>{const yy=by+i*lh+9;ctx.strokeStyle=l.color;ctx.lineWidth=2;ctx.setLineDash(l.dash||[]);ctx.beginPath();ctx.moveTo(bx,yy);ctx.lineTo(bx+18,yy);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle=ink;ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(l.label,bx+24,yy);});}
+  if(cfg.message){ctx.fillStyle=muted;ctx.font='13.5px Figtree, system-ui, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    const lines=cfg.message.split('\n');lines.forEach((t,i)=>ctx.fillText(t,m.l+pw/2,m.t+ph/2+(i-(lines.length-1)/2)*18));}
+  return {X,Y,m,pw,ph,ctx};
+}
+
+// ---------- state ----------
+const ST={gamma:4,dist:'minus',kbar:10,netN:300,seed:1,view:'spin',walls:true,rings:true};
+const g10=()=>Math.round(ST.gamma*10);
+let NV=null;
+
+function layoutStep(net,pos,disp,temp){
+  const N=net.N,k=Math.sqrt(1/N),k2=k*k;disp.fill(0);
+  for(let i=0;i<N;i++){const xi=pos[2*i],yi=pos[2*i+1];
+    for(let j=i+1;j<N;j++){const dx=xi-pos[2*j],dy=yi-pos[2*j+1],d2=dx*dx+dy*dy+1e-6,f=k2/d2;
+      disp[2*i]+=dx*f;disp[2*i+1]+=dy*f;disp[2*j]-=dx*f;disp[2*j+1]-=dy*f;}}
+  for(let l=0;l<net.L;l++){const i=net.ei[l],j=net.ej[l],dx=pos[2*i]-pos[2*j],dy=pos[2*i+1]-pos[2*j+1],d=Math.sqrt(dx*dx+dy*dy)+1e-9,f=d/k;
+    disp[2*i]-=dx*f;disp[2*i+1]-=dy*f;disp[2*j]+=dx*f;disp[2*j+1]+=dy*f;}
+  for(let i=0;i<N;i++){disp[2*i]-=pos[2*i]*3;disp[2*i+1]-=pos[2*i+1]*3;
+    const dx=disp[2*i],dy=disp[2*i+1],d=Math.sqrt(dx*dx+dy*dy)+1e-12,s=Math.min(d,temp)/d;pos[2*i]+=dx*s;pos[2*i+1]+=dy*s;}
+}
+
+function buildNet(keepFrac){
+  const frac=keepFrac===undefined?(NV?(+$('dSl').value/+$('dSl').max):null):keepFrac;
+  const rng=mulberry32(hashSeed(ST.seed,ST.netN,g10(),ST.kbar));
+  const net=staticModel(ST.netN,ST.gamma,ST.kbar,rng);
+  const u=new Float64Array(net.N);for(let i=0;i<net.N;i++)u[i]=rng();
+  const pos=new Float64Array(2*net.N);for(let i=0;i<2*net.N;i++)pos[i]=rng()-0.5;
+  const order=[...Array(net.N).keys()].sort((a,b)=>net.deg[a]-net.deg[b]);
+  NV={net,u,pos,disp:new Float64Array(2*net.N),order,solver:makeSolver(net),h:new Float64Array(net.N),screen:new Float32Array(2*net.N),rad:new Float32Array(net.N),iter:0};
+  let kmax=0;for(const d of net.deg)kmax=Math.max(kmax,d);
+  $('netInfo').textContent=`${net.N} nodes, ${net.L} links, largest degree ${kmax}`;
+  setFields();calibrate(frac);startLayout();
+}
+function setFields(){const d=DISTS[ST.dist];NV.x=Float64Array.from(NV.u,d.inv);}
+function mAtNet(D){const {net,x,h,solver}=NV;for(let i=0;i<net.N;i++)h[i]=D*x[i];solver.solve(h);return magnetization(net,solver.spins);}
+function calibrate(frac){
+  let D=Math.max(1,NV.net.kappa),it=0;while(mAtNet(D)>0.15&&it<14){D*=2;it++;}
+  let lo=it?D/2:0,hi=D;for(let t=0;t<18;t++){const mid=(lo+hi)/2;if(mAtNet(mid)>0.15)lo=mid;else hi=mid;}
+  const raw=1.35*hi,s=niceStep(raw,4),dMax=Math.ceil(raw/s)*s;NV.dMax=dMax;
+  const sl=$('dSl');sl.max=dMax;sl.step=dMax/1000;
+  const n=120;NV.cD=new Float64Array(n+1);NV.cM=new Float64Array(n+1);NV.cMF=new Float64Array(n+1);
+  const g=ST.gamma,k0=ST.kbar*(g-2)/(g-1),G=DISTS[ST.dist].G;
+  for(let j=0;j<=n;j++){const Dj=dMax*j/n;NV.cD[j]=Dj;NV.cM[j]=mAtNet(Dj);NV.cMF[j]=mfSolve(Dj,g,k0,G);}
+  if(frac==null){let j=0;while(j<n&&NV.cM[j]>=0.8)j++;frac=Math.max(0.05,j/n);}
+  sl.value=Math.min(dMax,frac*dMax);updateView();
+}
+let layoutRAF=0;const LAYOUT_IT=260;
+function startLayout(){cancelAnimationFrame(layoutRAF);NV.iter=0;
+  const step=()=>{layoutStep(NV.net,NV.pos,NV.disp,0.08*Math.pow(0.985,NV.iter)+0.002);NV.iter++;};
+  if(reduceMotion){while(NV.iter<LAYOUT_IT)step();drawNet();return;}
+  const tick=()=>{const t0=performance.now();while(NV.iter<LAYOUT_IT&&performance.now()-t0<12)step();drawNet();if(NV.iter<LAYOUT_IT)layoutRAF=requestAnimationFrame(tick);};tick();}
+
+function updateView(){
+  const D=+$('dSl').value;$('dOut').textContent=fmtD(D);
+  const {net,x,h,solver}=NV;for(let i=0;i<net.N;i++)h[i]=D*x[i];
+  const t0=performance.now();solver.solve(h);const dt=performance.now()-t0;
+  const s=solver.spins;NV.spins=s;NV.D=D;
+  let up=0,against=0,walls=0;for(let i=0;i<net.N;i++){if(s[i]>0)up++;if(s[i]*h[i]<0)against++;}
+  for(let l=0;l<net.L;l++)if(s[net.ei[l]]!==s[net.ej[l]])walls++;
+  const m=magnetization(net,s);NV.m=m;
+  $('rM').textContent=m.toFixed(3);$('rE').textContent=(energy(net,s,h)/net.N).toFixed(3);
+  $('rUp').textContent=(100*up/net.N).toFixed(1)+' %';$('rW').textContent=`${walls} of ${net.L}`;
+  $('rA').textContent=`${against} of ${net.N}`;$('rT').textContent=dt<1?(dt*1000).toFixed(0)+' µs':dt.toFixed(1)+' ms';
+  drawNet();drawCurve();
+}
+function drawNet(){
+  const cv=$('net'),S=setup(cv);if(!S||!NV)return;const {ctx,w,h}=S;const {net,pos,screen,rad,order}=NV,N=net.N;
+  let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;for(let i=0;i<N;i++){const X=pos[2*i],Y=pos[2*i+1];if(X<x0)x0=X;if(X>x1)x1=X;if(Y<y0)y0=Y;if(Y>y1)y1=Y;}
+  const pt=36,pb=w<600?64:40,px=18,sc=Math.min((w-2*px)/((x1-x0)||1),(h-pt-pb)/((y1-y0)||1)),ox=w/2-sc*(x0+x1)/2,oy=pt+(h-pt-pb)/2-sc*(y0+y1)/2;
+  const sf=Math.max(0.55,Math.min(1.5,Math.sqrt(w*h/(N*1300))));
+  for(let i=0;i<N;i++){screen[2*i]=ox+sc*pos[2*i];screen[2*i+1]=oy+sc*pos[2*i+1];rad[i]=sf*(1.3+0.9*Math.sqrt(net.deg[i]));}
+  const s=NV.spins,up=css('--up'),down=css('--down'),wall=css('--wall'),muted=css('--muted'),ink=css('--ink'),panel=css('--panel');
+  const showWalls=ST.walls&&ST.view==='spin'&&s;
+  ctx.lineWidth=0.7;ctx.strokeStyle=muted;ctx.globalAlpha=Math.max(0.12,Math.min(0.34,0.34*Math.sqrt(500/Math.max(1,net.L))));ctx.beginPath();
+  for(let l=0;l<net.L;l++){const i=net.ei[l],j=net.ej[l];if(showWalls&&s[i]!==s[j])continue;ctx.moveTo(screen[2*i],screen[2*i+1]);ctx.lineTo(screen[2*j],screen[2*j+1]);}
+  ctx.stroke();ctx.globalAlpha=1;
+  if(showWalls){ctx.strokeStyle=wall;ctx.lineWidth=1.25;ctx.globalAlpha=0.75;ctx.beginPath();
+    for(let l=0;l<net.L;l++){const i=net.ei[l],j=net.ej[l];if(s[i]===s[j])continue;ctx.moveTo(screen[2*i],screen[2*i+1]);ctx.lineTo(screen[2*j],screen[2*j+1]);}
+    ctx.stroke();ctx.globalAlpha=1;}
+  for(const i of order){const X=screen[2*i],Y=screen[2*i+1],r=rad[i];
+    if(ST.view==='field'){ctx.fillStyle=NV.x[i]>0?up:down;ctx.globalAlpha=0.18+0.82*Math.abs(NV.x[i]);}else ctx.fillStyle=s&&s[i]>0?up:down;
+    ctx.beginPath();ctx.arc(X,Y,r,0,7);ctx.fill();ctx.globalAlpha=1;ctx.strokeStyle=panel;ctx.lineWidth=0.8;ctx.stroke();
+    if(ST.rings&&ST.view==='spin'&&s&&s[i]*NV.x[i]<0&&NV.D>0){ctx.strokeStyle=ink;ctx.lineWidth=1.3;ctx.beginPath();ctx.arc(X,Y,r+1.8,0,7);ctx.stroke();}}
+  $('legWall').style.display=showWalls?'':'none';$('legRing').style.display=ST.rings&&ST.view==='spin'?'':'none';
+}
+function drawCurve(){
+  if(!NV)return;const ink=css('--ink'),muted=css('--muted'),up=css('--up');
+  plot($('curve'),{xlim:[0,NV.dMax],ylim:[0,1.04],xlabel:'Δ',ylabel:'m',ml:38,
+    series:[{x:NV.cD,y:NV.cMF,color:muted,dash:[5,4],width:1.4},{x:NV.cD,y:NV.cM,color:ink,width:1.7}],
+    vlines:[{x:NV.D,color:up,dash:[],width:1.2}],dots:[{x:NV.D,y:NV.m,color:up,r:4.5}]});
+}
+
+// hover
+(function(){const cv=$('net'),tip=$('tip');
+  cv.addEventListener('pointermove',e=>{if(!NV)return;const r=cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+    let best=-1,bd=1e9;for(let i=0;i<NV.net.N;i++){const dx=NV.screen[2*i]-mx,dy=NV.screen[2*i+1]-my,d=dx*dx+dy*dy,rr=NV.rad[i]+5;if(d<rr*rr&&d<bd){bd=d;best=i;}}
+    if(best<0){tip.style.display='none';return;}
+    const hv=NV.D*NV.x[best],sp=NV.spins?NV.spins[best]:0;
+    tip.innerHTML=`Node ${best+1}, degree ${NV.net.deg[best]}<br>field h = ${hv>=0?'+':''}${hv.toFixed(2)}<br>spin ${sp>0?'up':'down'}${sp*hv<0?', against its field':''}`;
+    tip.style.display='block';const tw=tip.offsetWidth;let lx=mx+14;if(lx+tw>r.width-6)lx=mx-tw-14;tip.style.left=lx+'px';tip.style.top=Math.max(4,my-44)+'px';});
+  cv.addEventListener('pointerleave',()=>tip.style.display='none');})();
+
+// ---------- mean-field ----------
+let MF=null;
+function mfNature(g,d){
+  if(g<=3)return {type:'none'};
+  if(g<5){const D=Dconst(g,d);if(Math.abs(D)<3e-3)return {type:'marginal',D};return {type:D>0?'first':'cont',D,beta:1/(g-3)};}
+  return {type:d.pdd>0?'first':'cont',beta:0.5};
+}
+function computeMF(){
+  const g=ST.gamma,d=DISTS[ST.dist],k0=ST.kbar*(g-2)/(g-1),G=d.G,sol=D=>mfSolve(D,g,k0,G);
+  const nat=mfNature(g,d);let Dt=null,range;
+  const kap=g>3?k0*(g-2)/(g-3):Infinity,DcF=g>3?2*d.p00*kap:Infinity;
+  if(g>3){let hi=ST.kbar;while(sol(hi)>1e-6&&hi<1e6)hi*=2;let lo=0;for(let t=0;t<28;t++){const mid=(lo+hi)/2;if(sol(mid)>1e-6)lo=mid;else hi=mid;}
+    Dt=hi;if(nat.type==='cont'&&isFinite(DcF))Dt=DcF;range=1.5*Dt;}
+  else{let D=ST.kbar;while(sol(D)>0.05&&D<1e6)D*=2;range=D;}
+  MF={g,k0,G,d,nat,Dt,range,kap,DcF};
+  const logm=$('mfLog');if(document.activeElement!==logm)logm.checked=g<=3;
+  const n=160;MF.cD=[];MF.cM=[];
+  for(let j=1;j<=n;j++){const Dj=g<=3||logm.checked?range*Math.pow(10,-3+3*j/n):range*j/n;MF.cD.push(Dj);MF.cM.push(sol(Dj));}
+  const sl=$('mfD');sl.max=range;sl.step=range/1000;sl.value=g>3?0.85*Dt:0.25*range;
+  drawMFall();theoryText();
+}
+function drawMFall(){drawFm();drawMd();drawBeta();}
+function drawFm(){
+  if(!MF)return;const D=+$('mfD').value;$('mfDOut').textContent=fmtD(D);
+  const zoom=$('zoom').checked,mx=zoom?0.2:1,n=220,xs=[],fs=[];
+  for(let j=0;j<=n;j++){const m=mx*j/n;xs.push(m);fs.push(fMF(m,D,MF.g,MF.k0,MF.G));}
+  const ms=mfSolve(D,MF.g,MF.k0,MF.G),ink=css('--ink'),muted=css('--muted'),up=css('--up'),down=css('--down');
+  const fmax=Math.max(mx,...fs);
+  plot($('fmPlot'),{xlim:[0,mx],ylim:[0,zoom?Math.min(fmax,mx*1.6):1.02],xlabel:'m',ylabel:'f(m)',
+    series:[{x:[0,mx],y:[0,mx],color:muted,dash:[5,4],width:1.3},{x:xs,y:fs,color:down,width:2}],
+    dots:[{x:ms,y:ms,color:up,r:5}],legend:[{label:'f(m)',color:down},{label:'m',color:muted,dash:[5,4]}],legendPos:'tl'});
+  $('fmCap').textContent=ms>0?`Stable solution m = ${ms.toFixed(3)} at Δ = ${fmtD(D)}.`:`Only m = 0 solves m = f(m) at Δ = ${fmtD(D)}.`;
+}
+function drawMd(){
+  if(!MF)return;const lg=$('mfLog').checked,ink=css('--ink'),up=css('--up'),muted=css('--muted');const D=+$('mfD').value;
+  const cfg={xlim:lg?[MF.cD[0],MF.range]:[0,MF.range],ylim:lg?[Math.max(1e-3,Math.min(...MF.cM.filter(v=>v>0))*0.8),1.2]:[0,1.04],xlog:lg,ylog:lg,xlabel:'Δ',ylabel:'m (mean field)',
+    series:[{x:MF.cD,y:MF.cM,color:ink,width:2,breakAt:i=>MF.cM[i-1]-MF.cM[i]>0.08}],vlines:[{x:D,color:up,dash:[],width:1.2}],legend:[]};
+  if(MF.g<3&&lg){const ex=-(MF.g-2)/(3-MF.g),j=Math.floor(MF.cD.length*0.7),x0=MF.cD[j],y0=MF.cM[j];
+    cfg.series.push({x:[x0/20,x0*20],y:[y0*Math.pow(1/20,ex),y0*Math.pow(20,ex)],color:muted,dash:[5,4],width:1.2});
+    cfg.legend=[{label:'slope −(γ−2)/(3−γ)',color:muted,dash:[5,4]}];cfg.legendPos='bl';}
+  if(MF.nat.type==='cont'&&isFinite(MF.DcF)&&!lg)cfg.vlines.push({x:MF.DcF,color:muted});
+  plot($('mdPlot'),cfg);
+  const t=MF.nat.type;
+  $('mdCap').textContent=t==='none'?'No threshold: m stays finite for every Δ.':t==='first'?`m jumps to zero at Δ ≈ ${fmtD(MF.Dt)}.`:t==='cont'?`m vanishes continuously at Δc = ${fmtD(MF.DcF)} (dashed).`:'Marginal case, D ≈ 0.';
+}
+function drawBeta(){
+  const g=ST.gamma,ink=css('--ink'),up=css('--up'),muted=css('--muted'),down=css('--down');const xs=[],ys=[];
+  for(let j=0;j<=200;j++){const gg=3.4+3.6*j/200;xs.push(gg);ys.push(gg<5?1/(gg-3):0.5);}
+  plot($('betaPlot'),{xlim:[3,7],ylim:[0,2.2],xlabel:'γ',ylabel:'β',ml:38,series:[{x:xs,y:ys,color:ink,width:1.8}],
+    vlines:g>3?[{x:g,color:up,dash:[],width:1.2}]:[],dots:[{x:4,y:0.75,color:down,r:4},{x:6,y:0.45,color:down,r:4}]});
+}
+function theoryText(){
+  const g=ST.gamma,d=DISTS[ST.dist],N=MF.nat,v=$('verdict');let kv=[];
+  const fg=g.toFixed(1);
+  kv.push(['k₀ (continuum)',MF.k0.toFixed(3)]);
+  kv.push(['⟨k²⟩/k̄',g>3?MF.kap.toFixed(2):'∞']);
+  if(N.type==='none'){const ex=g<3?((g-2)/(3-g)).toFixed(2):'∞';
+    v.innerHTML=`<strong>Always magnetized.</strong> At γ = ${fg} the second moment ⟨k²⟩ diverges, so <var>f</var>(<var>m</var>) has an infinite slope at <var>m</var> = 0 and a nonzero solution exists for every Δ. The order parameter decays as <var>m</var> ∼ Δ<sup>−(γ−2)/(3−γ)</sup>`+(g<3?` = Δ<sup>−${ex}</sup>.`:', with logarithmic corrections at γ = 3.');
+    kv.push(['Decay exponent',g<3?'−'+ex:'log']);}
+  else if(g<5){kv.push(['D = ∫x¹⁻ᵞ[G − 2p₀(0)x]dx',(N.D>0?'+':'')+N.D.toFixed(3)]);
+    if(N.type==='marginal')v.innerHTML=`<strong>Marginal.</strong> For 3 < γ < 5 the sign of <var>D</var> decides the transition type, and here <var>D</var> ≈ 0.`;
+    else if(N.type==='first'){v.innerHTML=`<strong>First-order jump.</strong> For 3 < γ < 5 the sign of <var>D</var> (Eq. 17) decides. Here <var>D</var> > 0, so <var>f</var> is convex at <var>m</var> = 0 and the order parameter drops discontinuously.`;kv.push(['Jump at Δ ≈',fmtD(MF.Dt)]);}
+    else{v.innerHTML=`<strong>Continuous transition</strong> with β = 1/(γ − 3) = ${N.beta.toFixed(2)}. For 3 < γ < 5 the sign of <var>D</var> decides, and here <var>D</var> < 0 so <var>f</var> is concave at <var>m</var> = 0.`+(d.pdd>0?' This is the paper’s counterexample: <var>p</var>₀″(0) > 0 would predict a jump on a lattice, yet <var>D</var> < 0 makes it continuous.':'');
+      kv.push(['Δc = 2p₀(0)⟨k²⟩/k̄',fmtD(MF.DcF)],['β',N.beta.toFixed(3)]);}}
+  else{kv.push(['p₀″(0)',(d.pdd>0?'+':'')+d.pdd.toFixed(3)]);
+    if(N.type==='first'){v.innerHTML=`<strong>First-order jump.</strong> For γ > 5 the network behaves like the fully connected model: <var>p</var>₀″(0) > 0 makes <var>f</var> convex at <var>m</var> = 0.`;kv.push(['Jump at Δ ≈',fmtD(MF.Dt)]);}
+    else{v.innerHTML=`<strong>Continuous transition</strong> with the classic β = 1/2. For γ > 5, <var>p</var>₀″(0) < 0 makes <var>f</var> concave at <var>m</var> = 0.`;kv.push(['Δc = 2p₀(0)⟨k²⟩/k̄',fmtD(MF.DcF)],['β','0.5']);}
+    if(Math.abs(g-5)<0.05)v.innerHTML+=' Logarithmic corrections appear at γ = 5.';}
+  $('kv').innerHTML=kv.map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('');
+}
+
+// ---------- finite-size simulation ----------
+const SIZES=[250,500,1000,2000,4000],DEF_SIZES=[250,500,1000];
+let SIM=null,running=false,stopReq=false;
+$('sizes').innerHTML=SIZES.map(n=>`<label><input type="checkbox" value="${n}" ${DEF_SIZES.includes(n)?'checked':''}>${n.toLocaleString('en-US')}</label>`).join('');
+const sizeColors=k=>['--s0','--s1','--s2','--s3','--s4'].slice(5-k).map(css);
+function selSizes(){return [...$('sizes').querySelectorAll('input:checked')].map(i=>+i.value).sort((a,b)=>a-b);}
+function suggestRange(){
+  const sizes=selSizes(),N=sizes.length?sizes[sizes.length-1]:1000,g=ST.gamma,d=DISTS[ST.dist];let acc=0;
+  for(let s=0;s<3;s++){const rng=mulberry32(hashSeed(4242,N,s,g10(),ST.kbar)),net=staticModel(N,g,ST.kbar,rng),x=new Float64Array(N);
+    for(let i=0;i<N;i++)x[i]=d.inv(rng());const sol=makeSolver(net),h=new Float64Array(N);
+    const mAt=D=>{for(let i=0;i<N;i++)h[i]=D*x[i];sol.solve(h);return magnetization(net,sol.spins);};
+    let D=Math.max(1,net.kappa),it=0;while(mAt(D)>0.5&&it<14){D*=2;it++;}let lo=it?D/2:0,hi=D;for(let t=0;t<14;t++){const mid=(lo+hi)/2;if(mAt(mid)>0.5)lo=mid;else hi=mid;}acc+=hi;}
+  const Doff=acc/3,[a,b]=g<=3?[0.1,4]:ST.dist==='plus'?[0.8,1.2]:[0.55,1.45];
+  const r=v=>v>=20?Math.round(v):Math.round(v*10)/10;$('dLo').value=r(a*Doff);$('dHi').value=r(b*Doff);
+  $('simLog').checked=g<=3;
+}
+function clearSim(msg){if(running)stopReq=true;SIM=null;$('pFill').style.width='0';$('pTxt').textContent=msg||'Settings changed. Run the sweep to update.';drawSim();}
+async function runSweep(){
+  if(running){stopReq=true;return;}
+  const sizes=selSizes();if(!sizes.length){$('pTxt').textContent='Pick at least one network size.';return;}
+  const samples=Math.max(2,Math.min(400,Math.round(+$('nSamp').value||32))),pts=Math.max(4,Math.min(80,Math.round(+$('nPts').value||28)));
+  let lo=+$('dLo').value,hi=+$('dHi').value;if(!(hi>lo&&lo>=0)){$('pTxt').textContent='Set a Δ range with “Δ to” larger than “Δ from”.';return;}
+  const g=ST.gamma,kb=ST.kbar,d=DISTS[ST.dist],logD=g<=3&&lo>0;
+  const deltas=[];for(let j=0;j<pts;j++){const t=j/(pts-1);deltas.push(logD?lo*Math.pow(hi/lo,t):lo+(hi-lo)*t);}
+  SIM={sizes,deltas,g,kb,dist:ST.dist,M:sizes.map(()=>deltas.map(()=>[])),done:0,total:sizes.length*samples};
+  const my=SIM;
+  $('hN').innerHTML=sizes.map((n,i)=>`<option value="${i}" ${i===sizes.length-1?'selected':''}>N = ${n.toLocaleString('en-US')}</option>`).join('');
+  $('hD').max=pts-1;$('hD').value=Math.floor(pts/2);initCollapse();
+  running=true;stopReq=false;$('run').textContent='Stop';$('autoR').disabled=true;
+  let last=0;const t0=performance.now();
+  outer:for(let s=0;s<samples;s++)for(let a=0;a<sizes.length;a++){
+    if(stopReq||SIM!==my)break outer;
+    const N=sizes[a],rng=mulberry32(hashSeed(9173,N,s,Math.round(g*10),kb)),net=staticModel(N,g,kb,rng),x=new Float64Array(N);
+    for(let i=0;i<N;i++)x[i]=d.inv(rng());const sol=makeSolver(net),h=new Float64Array(N);
+    for(let j=0;j<pts;j++){const D=deltas[j];for(let i=0;i<N;i++)h[i]=D*x[i];sol.solve(h);my.M[a][j].push(magnetization(net,sol.spins));}
+    my.done++;$('pFill').style.width=(100*my.done/my.total)+'%';
+    const el=(performance.now()-t0)/1000;$('pTxt').textContent=`${my.done} of ${my.total} networks solved (${(my.done*pts).toLocaleString('en-US')} ground states, ${el.toFixed(1)} s)`;
+    if(performance.now()-last>350){drawSim();last=performance.now();}
+    await new Promise(r=>setTimeout(r,0));
+  }
+  running=false;stopReq=false;$('run').textContent='Run sweep';$('autoR').disabled=false;
+  if(SIM===my){if(my.done<my.total)$('pTxt').textContent+=' . Stopped early.'.replace(' .','.');
+    const a=sizes.length-1,mm=stats(a).mean,half=Math.max(...mm)/2;let jh=0;for(let j=0;j<pts;j++)if(mm[j]>=half)jh=j;$('hD').value=Math.min(pts-1,jh);
+    initCollapse();drawSim();}
+}
+function stats(a){const M=SIM.M[a],mean=[],U=[];for(const arr of M){const n=arr.length;if(!n){mean.push(NaN);U.push(NaN);continue;}let s1=0,s2=0,s4=0;
+  for(const v of arr){const v2=v*v;s1+=v;s2+=v2;s4+=v2*v2;}s1/=n;s2/=n;s4/=n;mean.push(s1);U.push(s2>1e-14?1-s4/(3*s2*s2):0);}return {mean,U};}
+function crossing(){
+  if(!SIM||SIM.sizes.length<2||SIM.g<=3)return null;const a=stats(SIM.sizes.length-2).U,b=stats(SIM.sizes.length-1).U,D=SIM.deltas;
+  const n=D.length,raw=D.map((_,j)=>b[j]-a[j]),d=raw.map((_,j)=>{let s=0,c=0;for(let k=j-1;k<=j+1;k++)if(k>=0&&k<n&&isFinite(raw[k])){s+=raw[k];c++;}return c?s/c:NaN;});
+  let best=null,score=0;
+  for(let j=0;j<n-1;j++){{const um=(a[j]+b[j]+a[j+1]+b[j+1])/4;if(!(d[j]>0&&d[j+1]<=0)||um<0.1||um>0.6)continue;}let sc=0;for(let k=Math.max(0,j-3);k<=j;k++)sc+=d[k];for(let k=j+1;k<=Math.min(n-1,j+4);k++)sc-=d[k];
+    if(sc>score){score=sc;best=D[j]+(D[j+1]-D[j])*d[j]/(d[j]-d[j+1]);}}
+  return best;}
+function drawSim(){drawSimM();drawSimU();drawHist();drawCollapse();}
+function drawSimM(){
+  const cv=$('mPlot');if(!SIM||!SIM.done){plot(cv,{xlim:[0,1],ylim:[0,1],xlabel:'Δ',ylabel:'⟨m⟩',message:running?'Solving…':'Run the sweep to fill this panel.'});return;}
+  const lg=$('simLog').checked,D=SIM.deltas,cols=sizeColors(SIM.sizes.length),series=[],legend=[];let ymin=1;
+  SIM.sizes.forEach((N,a)=>{const {mean}=stats(a);for(const v of mean)if(v>0)ymin=Math.min(ymin,v);series.push({x:D,y:mean,color:cols[a],width:1.5,marker:2.6});legend.push({label:`N = ${N.toLocaleString('en-US')}`,color:cols[a]});});
+  const cfg={xlim:lg?[D[0]||D[1],D[D.length-1]]:[D[0],D[D.length-1]],ylim:lg?[Math.max(1e-3,ymin*0.8),1.1]:[0,1.04],xlog:lg,ylog:lg,xlabel:'Δ',ylabel:'⟨m⟩',series,legend,legendPos:lg?'bl':'tr'};
+  if(SIM.g<3&&lg){const ex=-(SIM.g-2)/(3-SIM.g),mm=stats(SIM.sizes.length-1).mean,j=Math.floor(D.length*0.6),x0=D[j],y0=mm[j];
+    if(y0>0){series.push({x:[x0/10,x0*10],y:[y0*Math.pow(0.1,ex),y0*Math.pow(10,ex)],color:css('--muted'),dash:[5,4],width:1.2});legend.push({label:`slope ${ex.toFixed(2)}`,color:css('--muted'),dash:[5,4]});}}
+  plot(cv,cfg);
+  $('mCap').innerHTML=SIM.g<=3?'Paper Figs. 2(a) and 4(a). Mean field predicts no threshold, only a power-law decay. On small networks the largest hub is capped, so ⟨<var>m</var>⟩ still falls off eventually; the range that follows the power law widens as <var>N</var> grows.':'Paper Figs. 2 and 4. With <var>p</var>₊ the drop steepens with <var>N</var> toward a jump; with a single-peaked field it stays smooth.';
+}
+function drawSimU(){
+  const cv=$('uPlot');if(!SIM||!SIM.done){plot(cv,{xlim:[0,1],ylim:[0,0.7],xlabel:'Δ',ylabel:'U',message:running?'Solving…':'Run the sweep to fill this panel.'});return;}
+  const D=SIM.deltas,cols=sizeColors(SIM.sizes.length),series=[],legend=[];let umin=0;
+  SIM.sizes.forEach((N,a)=>{const {U}=stats(a);for(const v of U)if(isFinite(v))umin=Math.min(umin,v);series.push({x:D,y:U,color:cols[a],width:1.5,marker:2.6});legend.push({label:`N = ${N.toLocaleString('en-US')}`,color:cols[a]});});
+  const cr=running?null:crossing(),muted=css('--muted'),vl=cr?[{x:cr,color:css('--up'),dash:[5,4],width:1.4}]:[];
+  plot(cv,{xlim:[D[0],D[D.length-1]],xlog:SIM.g<=3&&D[0]>0,ylim:[Math.max(-1,Math.min(-0.05,umin-0.05)),0.72],xlabel:'Δ',ylabel:'U',series,legend,legendPos:'bl',
+    hlines:[{y:2/3,color:muted,dash:[2,4]},{y:0,color:muted,dash:[2,4]}],vlines:vl});
+  $('uCap').innerHTML='Paper Fig. 5. <var>U</var> → 2/3 when ordered and → 0 when disordered; curves for different <var>N</var> cross at a continuous transition'+(SIM.g<=3?'. For γ ≤ 3 no crossing is expected: the drop toward 0 is a finite-size effect that moves to larger Δ as <var>N</var> grows.':cr?`. Crossing of the two largest sizes: Δ ≈ ${fmtD(cr)}.`:running?'.':SIM.sizes.length<2?'. Select two or more sizes to look for a crossing.':'. No crossing of the two largest sizes in this range; a dip below zero instead points to a jump.');
+}
+function drawHist(){
+  const cv=$('hPlot'),S=setup(cv);if(!S)return;const {ctx,w,h}=S;const muted=css('--muted'),ink=css('--ink'),down=css('--down'),rule=css('--rule'),up=css('--up');
+  ctx.font=FONT;
+  if(!SIM||!SIM.done){ctx.fillStyle=muted;ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='13.5px Figtree, system-ui, sans-serif';ctx.fillText(running?'Solving…':'Run the sweep to fill this panel.',w/2,h/2);return;}
+  const a=Math.min(+$('hN').value||0,SIM.sizes.length-1),pts=SIM.deltas.length,rows=Math.min(6,pts),c=+$('hD').value,start=Math.max(0,Math.min(c-Math.floor(rows/2),pts-rows));
+  const ml=64,mr=10,mt=6,mb=30,pw=w-ml-mr,rh=(h-mt-mb)/rows,bins=40;
+  for(let r=0;r<rows;r++){const j=start+r,arr=SIM.M[a][j],cnt=new Array(bins).fill(0);for(const v of arr)cnt[Math.min(bins-1,Math.floor(v*bins))]++;
+    const mx=Math.max(1,...cnt),base=mt+(r+1)*rh-3;
+    ctx.fillStyle=j===c?up:down;ctx.globalAlpha=j===c?0.95:0.75;
+    for(let b=0;b<bins;b++){if(!cnt[b])continue;const bh=(rh-8)*cnt[b]/mx;ctx.fillRect(ml+pw*b/bins+0.5,base-bh,pw/bins-1,bh);}
+    ctx.globalAlpha=1;ctx.strokeStyle=rule;ctx.beginPath();ctx.moveTo(ml,base+.5);ctx.lineTo(ml+pw,base+.5);ctx.stroke();
+    ctx.fillStyle=j===c?ink:muted;ctx.textAlign='right';ctx.textBaseline='middle';ctx.font=(j===c?'600 ':'')+FONT;ctx.fillText('Δ = '+fmtD(SIM.deltas[j]),ml-8,base-rh/2+3);ctx.font=FONT;}
+  ctx.fillStyle=muted;ctx.textAlign='center';ctx.textBaseline='top';for(const v of [0,0.2,0.4,0.6,0.8,1])ctx.fillText(String(v),ml+pw*v,h-mb+5);
+  ctx.textBaseline='bottom';ctx.fillText('m',ml+pw/2,h-1);
+}
+function initCollapse(){
+  if(!SIM)return;const D=SIM.deltas,sl=$('cDc');sl.min=D[0];sl.max=D[D.length-1];sl.step=(D[D.length-1]-D[0])/500;
+  const cr=crossing(),nat=mfNature(SIM.g,DISTS[SIM.dist]);sl.value=cr??(D[0]+D[D.length-1])/2;
+  $('cB').value=Math.min(2,nat.beta||0.5);$('cNu').value=3;collapseLabels();}
+function collapseLabels(){$('cDcO').textContent=fmtD(+$('cDc').value);$('cBO').textContent=(+$('cB').value).toFixed(2);$('cNuO').textContent=(+$('cNu').value).toFixed(2);}
+function drawCollapse(){
+  const cv=$('cPlot');if(!SIM||!SIM.done){plot(cv,{xlim:[1,10],ylim:[0.1,1],xlog:true,ylog:true,xlabel:'|Δc − Δ|^ν′ N',ylabel:'⟨m⟩ N^(β/ν′)',message:running?'Solving…':'Run the sweep to fill this panel.'});return;}
+  if(SIM.g<=3){$('cCap').innerHTML='Paper Fig. 6. Scaling collapse applies only to a continuous transition.';plot(cv,{xlim:[1,10],ylim:[0.1,1],xlog:true,ylog:true,xlabel:'|Δc − Δ|^ν′ N',ylabel:'⟨m⟩ N^(β/ν′)',message:'There is no critical point for γ ≤ 3,\nso there is nothing to collapse.'});return;}
+  const Dc=+$('cDc').value,b=+$('cB').value,nu=+$('cNu').value,cols=sizeColors(SIM.sizes.length),series=[],legend=[];let x0=Infinity,x1=0,y0=Infinity,y1=0;
+  SIM.sizes.forEach((N,a)=>{const {mean}=stats(a),xs=[],ys=[];SIM.deltas.forEach((D,j)=>{if(D<Dc&&mean[j]>0){const X=Math.pow(Dc-D,nu)*N,Y=mean[j]*Math.pow(N,b/nu);if(X>0){xs.push(X);ys.push(Y);x0=Math.min(x0,X);x1=Math.max(x1,X);y0=Math.min(y0,Y);y1=Math.max(y1,Y);}}});
+    series.push({x:xs,y:ys,color:cols[a],width:1,marker:2.8});legend.push({label:`N = ${N.toLocaleString('en-US')}`,color:cols[a]});});
+  if(!(x1>x0)){plot(cv,{xlim:[1,10],ylim:[0.1,1],xlog:true,ylog:true,message:'Move Δc to the right of some data points.'});return;}
+  plot(cv,{xlim:[x0/1.5,x1*1.5],ylim:[y0/1.3,y1*1.3],xlog:true,ylog:true,xlabel:'|Δc − Δ|^ν′ N',ylabel:'⟨m⟩ N^(β/ν′)',series,legend,legendPos:'tl'});
+  const nat=mfNature(SIM.g,DISTS[SIM.dist]);
+  $('cCap').innerHTML='Paper Fig. 6: ⟨<var>m</var>⟩<var>N</var><sup>β/ν′</sup> versus |Δ<sub>c</sub> − Δ|<sup>ν′</sup><var>N</var>, points with Δ &lt; Δ<sub>c</sub>. Tune the sliders until the sizes fall on one curve'+(nat.type==='first'?'. Mean field predicts a jump here, so no clean collapse is expected.':`; the paper found β ≈ ${SIM.g<5?'0.75, ν′ ≈ 3.47 at γ = 4':'0.45, ν′ ≈ 2.81 at γ = 6'}.`);
+}
+
+// ---------- controls ----------
+function regimeText(){const g=ST.gamma;$('gamOut').textContent=g.toFixed(1);
+  $('regime').textContent=g<3?'2 < γ < 3: ⟨k²⟩ diverges, spins always magnetized':Math.abs(g-3)<0.01?'γ = 3: borderline, logarithmic corrections':g<5?'3 < γ < 5: transition type set by the sign of D':Math.abs(g-5)<0.01?'γ = 5: borderline, logarithmic corrections':'γ > 5: transition type set by the sign of p₀″(0)';}
+function buildDistSeg(){const seg=$('distSeg');seg.innerHTML='';
+  for(const [k,d] of Object.entries(DISTS)){const b=document.createElement('button');b.type='button';b.setAttribute('aria-pressed',k===ST.dist);b.title=d.formula;
+    b.innerHTML=`<canvas aria-hidden="true"></canvas>${d.name}`;b.onclick=()=>{if(ST.dist===k)return;ST.dist=k;[...seg.children].forEach(c=>c.setAttribute('aria-pressed',c===b));onDist();};seg.appendChild(b);}
+  drawSparks();$('distNote').textContent=DISTS[ST.dist].formula+'. '+DISTS[ST.dist].note;}
+function drawSparks(){const keys=Object.keys(DISTS);[...$('distSeg').children].forEach((b,i)=>{const cv=b.querySelector('canvas'),S=setup(cv);if(!S)return;const {ctx,w,h}=S,d=DISTS[keys[i]];
+  const pressed=keys[i]===ST.dist;ctx.strokeStyle=pressed?css('--on'):css('--ink');ctx.lineWidth=1.4;ctx.beginPath();
+  for(let j=0;j<=40;j++){const x=-1+2*j/40,y=d.p0(x)/1.6;const px=2+(w-4)*j/40,py=h-2-(h-4)*y;j?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.stroke();});}
+function onDist(){buildDistSeg();setFields();calibrate(+$('dSl').value/+$('dSl').max);computeMF();suggestRange();clearSim();}
+let deb=0;function debounce(fn,ms){clearTimeout(deb);deb=setTimeout(fn,ms);}
+function onModel(){buildNet(null);computeMF();suggestRange();clearSim();}
+$('gam').addEventListener('input',e=>{ST.gamma=+e.target.value;regimeText();debounce(onModel,160);});
+$('kb').addEventListener('input',e=>{ST.kbar=+e.target.value;$('kbOut').textContent=ST.kbar;debounce(onModel,160);});
+$('nN').addEventListener('input',e=>{ST.netN=+e.target.value;$('nOut').textContent=ST.netN;debounce(()=>buildNet(),160);});
+$('dSl').addEventListener('input',()=>{stopPlay();updateView();});
+$('resample').onclick=()=>{ST.seed++;buildNet();};
+document.querySelectorAll('input[name=view]').forEach(r=>r.addEventListener('change',e=>{ST.view=e.target.value;drawNet();}));
+$('walls').addEventListener('change',e=>{ST.walls=e.target.checked;drawNet();});
+$('rings').addEventListener('change',e=>{ST.rings=e.target.checked;drawNet();});
+$('mfD').addEventListener('input',()=>{drawFm();drawMd();});
+$('zoom').addEventListener('change',drawFm);
+$('mfLog').addEventListener('change',()=>computeMF());
+$('simLog').addEventListener('change',drawSimM);
+$('run').onclick=runSweep;$('autoR').onclick=()=>{suggestRange();};
+$('hN').addEventListener('change',drawHist);$('hD').addEventListener('input',drawHist);
+['cDc','cB','cNu'].forEach(id=>$(id).addEventListener('input',()=>{collapseLabels();drawCollapse();}));
+$('sizes').addEventListener('change',()=>{});
+let playRAF=0,playing=false;
+function stopPlay(){if(!playing)return;playing=false;cancelAnimationFrame(playRAF);$('play').textContent='Sweep Δ';}
+$('play').onclick=()=>{if(playing){stopPlay();return;}playing=true;$('play').textContent='Stop';const sl=$('dSl'),max=+sl.max,t0=performance.now(),dur=8000;
+  const tick=t=>{if(!playing)return;const f=Math.min(1,(t-t0)/dur);sl.value=f*max;updateView();if(f<1)playRAF=requestAnimationFrame(tick);else stopPlay();};playRAF=requestAnimationFrame(tick);};
+function redrawAll(){drawNet();drawCurve();drawMFall();drawSim();drawSparks();}
+let rz=0;window.addEventListener('resize',()=>{cancelAnimationFrame(rz);rz=requestAnimationFrame(redrawAll);});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',redrawAll);
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(redrawAll);
+
+// ---------- start ----------
+regimeText();buildDistSeg();buildNet(null);computeMF();suggestRange();drawSim();
+setTimeout(runSweep,400);
+
+</script>
+</body>
+</html>
