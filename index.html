@@ -12,7 +12,7 @@
   function effective(){return saved()||(sys&&sys.matches?'dark':'light')}
   function apply(){root.setAttribute('data-theme',effective());root.style.colorScheme=effective()}
   apply();
-  // Pages listen for OS colour-scheme changes to redraw their canvases; make those
+  // Pages listen for OS color-scheme changes to redraw their canvases; make those
   // listeners (and .matches checks) follow the chosen theme instead of the OS alone.
   if(nativeMM){
     window.matchMedia=function(q){
@@ -71,6 +71,7 @@
 @media print{#theme-toggle{display:none}}
 </style>
 <!-- theme-toggle:end -->
+
 
 
 
@@ -196,7 +197,7 @@ footer{margin:56px 0 40px;padding-top:18px;border-top:1px solid var(--rule);font
 <header class="mast">
   <p class="cite">Interactive companion to S. H. Lee, H. Jeong &amp; J. D. Noh, <a href="https://doi.org/10.1103/PhysRevE.74.031118">Phys. Rev. E 74, 031118 (2006)</a></p>
   <h1>The random-field Ising model on scale-free networks</h1>
-  <p class="lede">Every node carries a spin <var>s<sub>i</sub></var> = ±1. Links pull neighbours into line (<var>J</var> = 1); a quenched field <var>h<sub>i</sub></var> drawn from <var>p</var>(<var>h</var>) = <var>p</var><sub>0</sub>(<var>h</var>/Δ)/Δ pulls each spin its own way. Below, the exact zero-temperature ground state of <var>H</var> = −Σ<var>s<sub>i</sub>s<sub>j</sub></var> − Σ<var>h<sub>i</sub>s<sub>i</sub></var> is recomputed with a min-cut / max-flow solver (Dinic’s algorithm) whenever you move a control.</p>
+  <p class="lede">Every node carries a spin <var>s<sub>i</sub></var> = ±1. Links pull neighbors into line (<var>J</var> = 1); a quenched field <var>h<sub>i</sub></var> drawn from <var>p</var>(<var>h</var>) = <var>p</var><sub>0</sub>(<var>h</var>/Δ)/Δ pulls each spin its own way. Below, the exact zero-temperature ground state of <var>H</var> = −Σ<var>s<sub>i</sub>s<sub>j</sub></var> − Σ<var>h<sub>i</sub>s<sub>i</sub></var> is recomputed with a min-cut / max-flow solver (Dinic’s algorithm) whenever you move a control.</p>
 </header>
 </div>
 
@@ -222,7 +223,7 @@ footer{margin:56px 0 40px;padding-top:18px;border-top:1px solid var(--rule);font
 <main class="wrap">
 <section class="hero" aria-label="Ground state on one network">
   <div class="netwrap">
-    <canvas id="net" aria-label="Network ground state: node colour shows spin direction, node size shows degree"></canvas>
+    <canvas id="net" aria-label="Network ground state: node color shows spin direction, node size shows degree"></canvas>
     <div class="netinfo" id="netInfo"></div>
     <div class="legend"><span><i style="background:var(--up)"></i>spin up</span><span><i style="background:var(--down)"></i>spin down</span><span id="legWall"><b></b>broken bond</span><span id="legRing"><i style="background:transparent;box-shadow:0 0 0 1.5px var(--ink) inset"></i>spin against its own field</span></div>
     <div id="tip"></div>
@@ -253,8 +254,8 @@ footer{margin:56px 0 40px;padding-top:18px;border-top:1px solid var(--rule);font
     <div class="deltabox opts">
       <label for="nN" class="ctl" style="display:block"><span style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted)"><span>Nodes shown <var>N</var></span><output id="nOut" style="color:var(--ink);font-weight:600">300</output></span>
         <input id="nN" type="range" min="100" max="800" step="50" value="300"></label>
-      <label><input type="radio" name="view" value="spin" checked> Colour by ground-state spin</label>
-      <label><input type="radio" name="view" value="field"> Colour by local field <var>h<sub>i</sub></var></label>
+      <label><input type="radio" name="view" value="spin" checked> Color by ground-state spin</label>
+      <label><input type="radio" name="view" value="field"> Color by local field <var>h<sub>i</sub></var></label>
       <label><input type="checkbox" id="walls" checked> Mark broken bonds</label>
       <label><input type="checkbox" id="rings" checked> Ring spins that oppose their field</label>
     </div>
@@ -322,7 +323,7 @@ footer{margin:56px 0 40px;padding-top:18px;border-top:1px solid var(--rule);font
       <canvas class="plot tall" id="hPlot"></canvas>
       <div class="inline" style="margin-top:6px">
         <label>Size <select id="hN"></select></label>
-        <label style="flex:1;display:flex;gap:8px;align-items:center">Centre Δ <input id="hD" type="range" min="0" max="10" step="1" value="5" style="flex:1"></label>
+        <label style="flex:1;display:flex;gap:8px;align-items:center">Center Δ <input id="hD" type="range" min="0" max="10" step="1" value="5" style="flex:1"></label>
       </div>
     </div>
     <div class="card">
